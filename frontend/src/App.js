@@ -4,6 +4,7 @@ import { jsPDF } from "jspdf";
 import "./App.css";
 import AuthPanel from "./AuthPanel";
 import "./AuthPanel.css";
+import { generateCalibrationTemplatePDF } from "./templateGenerator";
  
 /* ══════════════════════════════════════════════════════════════
    DATA
@@ -654,26 +655,36 @@ export default function App() {
                   </>
                 )}
                 <div style={{marginTop:18}}>
-                  <div className="card-title">🖊️ Handwriting Sample</div>
+                  <div className="card-title">🖊️ Step 1: Download Calibration Template</div>
+                  <div style={{padding:"12px", background:"rgba(99, 102, 241, 0.08)", borderRadius:"10px", border:"1px solid rgba(99, 102, 241, 0.2)", marginBottom:"14px"}}>
+                    <p style={{fontSize:12, lineHeight:1.5, margin:"0 0 10px 0", opacity:0.85}}>
+                      Download &amp; print our official A4 Grid Template. Write letters <strong>A–Z, a–z, 0–9</strong> inside the boxes using a dark pen, then upload your photo below!
+                    </p>
+                    <button className="glow-btn glow-btn-full" onClick={generateCalibrationTemplatePDF} style={{fontSize:13, padding:"8px 12px"}}>
+                      📥 Download Calibration Template (PDF)
+                    </button>
+                  </div>
+
+                  <div className="card-title">✍️ Step 2: Upload Filled Template Photo</div>
                   <div className={`upload-zone ${inkDrag?"drag-over":""}`}
                     onDragOver={e=>{e.preventDefault();setInkDrag(true)}}
                     onDragLeave={()=>setInkDrag(false)}
                     onDrop={e=>{e.preventDefault();setInkDrag(false); const file=e.dataTransfer.files[0]; uploadSample(file); }}>
                     <input type="file" accept=".png,.jpg,.jpeg" onChange={e=>uploadSample(e.target.files[0])} />
                     <div className="upload-icon">✍️</div>
-                    <div className="upload-title">Upload handwriting photo</div>
-                    <div className="upload-sub">Must contain A–Z, a–z, 0–9. Optional: improves the output style.</div>
+                    <div className="upload-title">Upload filled template photo</div>
+                    <div className="upload-sub">Must contain A–Z, a–z, 0–9 grid boxes • JPG, PNG</div>
                   </div>
                   {handwritingSampleUrl && (
                     <div className="file-info" style={{marginTop:10}}>
                       <span style={{fontSize:20}}>🖋️</span>
                       <div>
-                        <div className="file-info-name">Sample uploaded</div>
+                        <div className="file-info-name">Template sample uploaded</div>
                         <div className="file-info-size">{handwritingSampleUrl}</div>
                       </div>
                     </div>
                   )}
-                  {isSampleUploading && <div style={{marginTop:8}}>Uploading sample…</div>}
+                  {isSampleUploading && <div style={{marginTop:8}}>Uploading template photo…</div>}
                 </div>
               </div>
             )}

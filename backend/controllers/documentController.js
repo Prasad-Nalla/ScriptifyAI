@@ -152,42 +152,67 @@ const generateCustomFont = async (samplePath) => {
 
     if (!text || boxes.length === 0) throw new Error('No text recognized in sample');
 
-    const glyphs = [];
+    // opentype requires .notdef glyph as the first glyph
+    const notdefGlyph = new opentype.Glyph({
+      name: '.notdef',
+      unicode: 0,
+      advanceWidth: 650,
+      path: new opentype.Path(),
+    });
+
+    const glyphs = [notdefGlyph];
     for (let i = 0; i < Math.min(text.length, boxes.length); i++) {
       const box = boxes[i].bbox;
-      // Crop character
+      const left = Math.max(0, Math.floor(box.x0));
+      const top = Math.max(0, Math.floor(box.y0));
+      const width = Math.max(1, Math.floor(box.x1 - box.x0));
+      const height = Math.max(1, Math.floor(box.y1 - box.y0));
+
+      // Crop character with sharp
       const croppedBuffer = await sharp(samplePath)
-        .extract({ left: box.x0, top: box.y0, width: box.x1 - box.x0, height: box.y1 - box.y0 })
+        .extract({ left, top, width, height })
         .png()
         .toBuffer();
 
-      // Vectorize to SVG
+      // Vectorize to SVG using potrace
       const svg = await new Promise((resolve, reject) => {
-        potrace.trace(croppedBuffer, (err, svg) => {
+        potrace.trace(croppedBuffer, (err, svgResult) => {
           if (err) reject(err);
-          else resolve(svg);
+          else resolve(svgResult);
         });
       });
 
-      // Create glyph (simplified; assumes SVG path is usable)
+      // Extract path 'd' attribute from potrace SVG string
+      const match = svg.match(/d="([^"]+)"/);
+      const pathData = match ? match[1] : "";
+
+      const glyphPath = new opentype.Path();
+      if (pathData) {
+        glyphPath.fromSVG(pathData);
+      }
+
       const glyph = new opentype.Glyph({
         name: text[i],
         unicode: text.charCodeAt(i),
-        path: new opentype.Path().fromSVG(svg),
+        advanceWidth: 650,
+        path: glyphPath,
       });
       glyphs.push(glyph);
     }
 
-    // Create font
+    // Create opentype font with required metrics
     const font = new opentype.Font({
       familyName: 'CustomHandwriting',
       styleName: 'Regular',
       unitsPerEm: 1000,
+      ascender: 800,
+      descender: -200,
       glyphs: glyphs,
     });
 
     const fontPath = path.join(__dirname, '..', 'uploads', `custom-${Date.now()}.otf`);
-    font.download(fontPath);
+    const arrayBuffer = font.toArrayBuffer();
+    fs.writeFileSync(fontPath, Buffer.from(arrayBuffer));
     return fontPath;
   } catch (error) {
     console.error('Font generation failed:', error);
