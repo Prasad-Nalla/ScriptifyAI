@@ -4,6 +4,7 @@ const path     = require("path");
 const router   = express.Router();
 const { protect } = require("../middleware/authMiddleware");
 const User = require("../models/User");
+const { generateFontFromCalibrationSheet } = require("../config/fontGeneratorService");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -64,20 +65,43 @@ router.post("/avatar", protect, upload.single("avatar"), async (req, res) => {
 });
 
 router.post("/handwriting-sample", protect, upload.single("sample"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: "No handwriting sample file uploaded" });
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No handwriting sample file uploaded" });
+    }
+
+    const serverUrl = process.env.SERVER_URL || "http://localhost:5000";
+    const sampleUrl = `${serverUrl}/uploads/${req.file.filename}`;
+
+    // Extract 68 glyphs & generate custom OTF font
+    let fontInfo = { fontUrl: "", fontPath: "", glyphCount: 0 };
+    try {
+      fontInfo = await generateFontFromCalibrationSheet(req.user.id, req.file.path);
+    } catch (fontErr) {
+      console.error("Font generation error (falling back to image sample):", fontErr.message);
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        handwritingSample: sampleUrl,
+        customFontUrl: fontInfo.fontUrl || "",
+        customFontPath: fontInfo.fontPath || "",
+      },
+      { new: true }
+    ).select("-password");
+
+    return res.json({
+      ...user.toObject(),
+      glyphCount: fontInfo.glyphCount || 0,
+      message: fontInfo.glyphCount > 0
+        ? `✅ Success! Extracted ${fontInfo.glyphCount} custom character glyphs and created your custom font!`
+        : "Handwriting sample uploaded.",
+    });
+  } catch (error) {
+    console.error("Handwriting sample upload error:", error);
+    return res.status(500).json({ message: error.message });
   }
-
-  const serverUrl = process.env.SERVER_URL || "http://localhost:5000";
-  const sampleUrl = `${serverUrl}/uploads/${req.file.filename}`;
-
-  const user = await User.findByIdAndUpdate(
-    req.user.id,
-    { handwritingSample: sampleUrl },
-    { new: true }
-  ).select("-password");
-
-  return res.json(user);
 });
 
 module.exports = router;

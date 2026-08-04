@@ -7,6 +7,8 @@ const UserSchema = new mongoose.Schema({
   password:  { type: String, required: true, minlength: 6 },
   avatar:    { type: String, default: "" },
   handwritingSample: { type: String, default: "" },
+  customFontUrl:     { type: String, default: "" },
+  customFontPath:    { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
 });
 

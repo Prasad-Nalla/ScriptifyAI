@@ -272,7 +272,9 @@ exports.convertPdf = async (req, res) => {
 
     const user = await User.findById(req.user.id);
     let customFontPath = null;
-    if (user?.handwritingSample) {
+    if (user?.customFontPath && fs.existsSync(user.customFontPath)) {
+      customFontPath = user.customFontPath;
+    } else if (user?.handwritingSample) {
       const sampleUrl = user.handwritingSample;
       const samplePath = path.join(__dirname, "..", "uploads", path.basename(sampleUrl));
       if (fs.existsSync(samplePath)) {
